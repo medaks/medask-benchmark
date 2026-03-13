@@ -2,9 +2,7 @@ from os import environ
 
 
 # API Key for openai. Needed only on the server.
-KEY_OPENAI = environ.get("KEY_OPENAI")
-if not KEY_OPENAI:
-    raise RuntimeError("Cannot run the benchmark without providing an OPENAI API key")
+KEY_OPENAI = environ.get("KEY_OPENAI", "")
 
 # API key for anthropic. Needed only for benchmarking.
 KEY_ANTHROPIC = environ.get("KEY_ANTHROPIC", "")

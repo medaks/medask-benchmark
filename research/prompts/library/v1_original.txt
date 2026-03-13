@@ -1,0 +1,14 @@
+Please give a triage classification for the following vignette.
+The criteria for triage classifications are presented below:
+Emergency (em): Call 911 or go directly to the emergency room;
+Non-Emergency (ne): Try to see a doctor, but the symptoms do not require immediate attention at an emergency room. For example, you can see a doctor in the next week.
+Self-care (sc): Let the health issue get better on its own and review the situation in a few days again.
+
+RESPONSE FORMAT:
+    Provide only one of the following responses:
+    - `em`
+    - `ne`
+    - `sc`
+
+Vignette:
+{vignette}

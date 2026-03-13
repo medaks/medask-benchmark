@@ -3,3 +3,5 @@ symptomcheck_bench/results/*json
 triage_bench/results/*jsonl
 *.egg-info
 **.DS_Store
+research/db/*.db
+charts_output/
