@@ -85,7 +85,11 @@ class ResultStore:
                 AVG(ne_accuracy) as mean_ne,
                 AVG(sc_accuracy) as mean_sc,
                 AVG(safety_rate) as mean_safety,
-                AVG(overtriage_rate) as mean_overtriage
+                AVG(overtriage_rate) as mean_overtriage,
+                AVG(total_seconds) as mean_run_secs,
+                CASE WHEN AVG(num_vignettes) > 0
+                     THEN AVG(total_seconds) / AVG(num_vignettes)
+                     ELSE NULL END as mean_per_vignette_secs
             FROM benchmark_runs
             {where}
             GROUP BY model_name, quantization, temperature, prompt_id

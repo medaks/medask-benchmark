@@ -30,8 +30,8 @@ class UmmonLMStudio(BaseUmmon):
     def __init__(
         self,
         model: str,
-        temperature: float = 0.6,
-        max_tokens: int = 2048,
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
         base_url: str = _DEFAULT_BASE_URL,
     ) -> None:
         self._model = model

@@ -23,8 +23,8 @@ from research.stats import compute_stats
 
 def build_client(
     model: str,
-    temperature: float = 0.6,
-    max_tokens: int = 300,
+    temperature: float = 0.0,
+    max_tokens: int = 4096,
     base_url: str = "http://localhost:1234/v1",
 ) -> UmmonLMStudio:
     return UmmonLMStudio(
@@ -100,10 +100,10 @@ def run_benchmark(
     model_family: Optional[str] = None,
     quantization: Optional[str] = None,
     parameter_count: Optional[str] = None,
-    temperature: float = 0.6,
+    temperature: float = 0.0,
     top_p: Optional[float] = None,
     top_k: Optional[int] = None,
-    max_tokens: int = 2048,
+    max_tokens: int = 4096,
     context_length: Optional[int] = None,
     gpu_layers: Optional[int] = None,
     prompt_version: str = "v1_original",
@@ -163,6 +163,7 @@ def run_benchmark(
         results = []
 
         errors = 0
+        max_retries = 3
         with open(jsonl_path, "w", encoding="utf-8") as f_out:
             for idx, v in tqdm(
                 list(enumerate(vignettes, 1)),
@@ -170,25 +171,44 @@ def run_benchmark(
             ):
                 gold = v["urgency_level"].strip().lower()
 
-                try:
-                    pred, raw_resp, latency = evaluate_single_vignette(
-                        client, prompt_template, v["case_description"]
-                    )
-                except Exception as e:
-                    errors += 1
-                    print(f"\n  [!] Case {idx} failed: {e}")
-                    pred = "ERROR"
-                    raw_resp = f"ERROR: {e}"
-                    latency = 0.0
+                # Retry up to max_retries times on failure
+                pred = "ERROR"
+                raw_resp = ""
+                latency = 0.0
+                last_err = None
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        pred, raw_resp, latency = evaluate_single_vignette(
+                            client, prompt_template, v["case_description"]
+                        )
+                        last_err = None
+                        break  # success
+                    except Exception as e:
+                        last_err = e
+                        if attempt < max_retries:
+                            print(f"\n  [!] Case {idx} attempt {attempt}/{max_retries} failed: {e} — retrying...")
+                            time.sleep(2 * attempt)  # brief backoff
+                        else:
+                            errors += 1
+                            print(f"\n  [!] Case {idx} failed after {max_retries} attempts: {e}")
+                            pred = "ERROR"
+                            raw_resp = f"ERROR after {max_retries} attempts: {e}"
+                            latency = 0.0
 
                 if grader_client and pred != "ERROR":
-                    try:
-                        from research.grader import grade_response
-                        pred = grade_response(
-                            grader_client, raw_resp, v["case_description"]
-                        )
-                    except Exception as e:
-                        print(f"\n  [!] Grader failed on case {idx}: {e}")
+                    for attempt in range(1, max_retries + 1):
+                        try:
+                            from research.grader import grade_response
+                            pred = grade_response(
+                                grader_client, raw_resp, v["case_description"]
+                            )
+                            break
+                        except Exception as e:
+                            if attempt < max_retries:
+                                print(f"\n  [!] Grader case {idx} attempt {attempt}/{max_retries} failed: {e} — retrying...")
+                                time.sleep(2 * attempt)
+                            else:
+                                print(f"\n  [!] Grader failed on case {idx} after {max_retries} attempts: {e}")
 
                 correct = pred == gold
 

@@ -132,8 +132,8 @@ if page == "Run Benchmark":
 
     with col2:
         st.subheader("Inference Settings")
-        temperature = st.slider("Temperature", 0.0, 2.0, 0.6, 0.1)
-        max_tokens = st.number_input("Max tokens", 50, 16384, 2048)
+        temperature = st.slider("Temperature", 0.0, 2.0, 0.0, 0.1)
+        max_tokens = st.number_input("Max tokens", 50, 16384, 4096)
         top_p = st.number_input("Top-p (0 = not set)", 0.0, 1.0, 0.0, 0.05)
         top_k = st.number_input("Top-k (0 = not set)", 0, 200, 0)
         context_length = st.number_input(
@@ -141,7 +141,7 @@ if page == "Run Benchmark":
             0, 131072,
             value=default_ctx if default_ctx else 0,
         )
-        gpu_layers = st.number_input("GPU layers (0 = default)", 0, 200, 0)
+        gpu_layers = st.number_input("GPU layers (-1 = all/max offload)", -1, 200, -1)
 
     st.subheader("Grader (LLM-as-Judge)")
     st.markdown("Optionally use a second model to evaluate responses instead of regex matching.")
@@ -253,7 +253,7 @@ if page == "Run Benchmark":
                     top_k=top_k if top_k > 0 else None,
                     max_tokens=max_tokens,
                     context_length=context_length if context_length > 0 else None,
-                    gpu_layers=gpu_layers if gpu_layers > 0 else None,
+                    gpu_layers=gpu_layers if gpu_layers != 0 else None,
                     prompt_version=prompt_version,
                     vignette_set=vignette_set,
                     runs=runs,
@@ -297,8 +297,11 @@ elif page == "Results":
             df["mean_ne"] = (df["mean_ne"] * 100).round(1)
             df["mean_sc"] = (df["mean_sc"] * 100).round(1)
             df["mean_safety"] = (df["mean_safety"] * 100).round(1)
+            df["mean_run_secs"] = df["mean_run_secs"].round(1)
+            df["mean_per_vignette_secs"] = df["mean_per_vignette_secs"].round(2)
             display_cols = ["model_name", "quantization", "num_runs", "mean_overall",
-                            "sd_overall", "mean_em", "mean_ne", "mean_sc", "mean_safety", "temperature"]
+                            "sd_overall", "mean_em", "mean_ne", "mean_sc", "mean_safety",
+                            "temperature", "mean_run_secs", "mean_per_vignette_secs"]
             st.dataframe(
                 df[display_cols].rename(columns={
                     "model_name": "Model",
@@ -311,6 +314,8 @@ elif page == "Results":
                     "mean_sc": "SC %",
                     "mean_safety": "Safety %",
                     "temperature": "Temp",
+                    "mean_run_secs": "Avg Run (s)",
+                    "mean_per_vignette_secs": "Avg/Case (s)",
                 }),
                 use_container_width=True,
                 hide_index=True,
@@ -336,13 +341,15 @@ elif page == "Results":
             df = pd.DataFrame(all_runs)
             show_cols = ["run_id", "model_name", "quantization", "vignette_set",
                          "run_number", "overall_accuracy", "safety_rate", "temperature",
-                         "source", "created_at"]
+                         "total_seconds", "source", "created_at"]
             available = [c for c in show_cols if c in df.columns]
             display = df[available].copy()
             if "overall_accuracy" in display.columns:
                 display["overall_accuracy"] = (display["overall_accuracy"] * 100).round(1)
             if "safety_rate" in display.columns:
                 display["safety_rate"] = (display["safety_rate"] * 100).round(1)
+            if "total_seconds" in display.columns:
+                display["total_seconds"] = display["total_seconds"].round(1)
             st.dataframe(display, use_container_width=True, hide_index=True)
         else:
             st.info("No runs found.")
